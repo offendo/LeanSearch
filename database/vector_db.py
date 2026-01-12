@@ -2,6 +2,7 @@ import os
 import logging
 
 import chromadb
+from tqdm import tqdm
 from jixia.structs import pp_name
 from psycopg import Connection
 
@@ -30,6 +31,8 @@ def create_vector_db(conn: Connection, path: str, batch_size: int):
                 INNER JOIN informal i ON s.name = i.symbol_name
             WHERE d.visible = TRUE
         """)
+        total = cursor.rowcount 
+        pbar = tqdm(total=total, desc='Creating embeddings')
 
         while batch := cursor.fetchmany(batch_size):
             batch_doc = []
@@ -46,3 +49,4 @@ def create_vector_db(conn: Connection, path: str, batch_size: int):
                 return
             batch_embedding = embedding.embed(batch_doc)
             collection.add(embeddings=batch_embedding, ids=batch_id)
+            pbar.update(batch_size)

@@ -9,6 +9,9 @@ import jinja2
 from jinja2 import Environment, FileSystemLoader
 from jixia.structs import DeclarationKind, LeanName, pp_name
 from openai import AsyncOpenAI
+import tiktoken
+
+tokenizer = tiktoken.encoding_for_model("gpt-oss-120b")
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +40,9 @@ class TranslationInput:
     def value_matters(self):
         return self.kind in ["classInductive", "definition", "inductive", "structure"]
 
+CONTROL_CHARS = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]')
+def sanitize_text(s: str) -> str:
+    return CONTROL_CHARS.sub('', s)
 
 class TranslationEnvironment:
     def __init__(self, model: str):
@@ -51,7 +57,7 @@ class TranslationEnvironment:
         self.model = model
         self.pattern_name = re.compile(r"\*\*Informal name:?\*\*\s*(.*)")
         self.pattern_description = re.compile(
-            r"\*\*Informal statement:?\*\*\s(.*?)\*\*End of informal statement\*\*",
+            r"\*\*Informal statement:?\*\*\s(.*?)\*\*Informal name",
             re.DOTALL,
         )
 
@@ -66,20 +72,22 @@ class TranslationEnvironment:
             return "Fake Name", f"Fake Description\nPrompt:\n{data}"
         for _ in range(5):
             try:
-                response = await self.client.chat.completions.create(
+                response = await self.client.responses.create(
                     model=self.model,
-                    messages=[
-                        {"role": "user", "content": prompt},
+                    input=[
+                        {
+                            "role": "user",
+                            "content": prompt,
+                        }
                     ],
-                    # ___Why don't we use `response_format={ 'type': 'json_object' }`?
-                    #    DeepSeek support for json is rather limited at the moment, in our case it will be raising parse errors on LaTeX escape characters.
-                    stream=False,
+                    max_output_tokens=3000,
                 )
             except JSONDecodeError:  # DeepSeek API is not available right now
                 logger.info("while translating %s: service unavailable; retrying", data.name)
                 await asyncio.sleep(1)
                 continue
-            answer = response.choices[0].message.content
+            answer = response.output_text
+            answer = sanitize_text(answer)
             try:
                 name = self.pattern_name.search(answer).group(1)
                 description = self.pattern_description.search(answer).group(1)

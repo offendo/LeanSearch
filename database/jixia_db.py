@@ -7,6 +7,7 @@ from jixia import LeanProject
 from jixia.structs import LeanName, Symbol, Declaration, is_internal
 from psycopg import Connection
 from psycopg.types.json import Jsonb
+from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 
@@ -157,8 +158,8 @@ def load_data(project: LeanProject, prefixes: list[LeanName], conn: Connection):
             load_module(modules, d)
             all_modules += modules
 
-        for m in all_modules:
+        for m in tqdm(all_modules, desc='loading symbol...'):
             load_symbol(m)
-        for m in all_modules:
+        for m in tqdm(all_modules, desc='loading decl...'):
             load_declaration(m)
         topological_sort()

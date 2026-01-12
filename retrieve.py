@@ -15,8 +15,8 @@ class Record(BaseModel):
     module_name: LeanName
     kind: DeclarationKind
     name: LeanName
-    start: int
-    stop: int
+    start: int | None
+    stop: int | None
     signature: str
     type: str
     value: str | None
@@ -67,14 +67,17 @@ class Retriever:
             for ids, distances in zip(results["ids"], results["distances"]):
                 current_results = []
                 for doc_id, distance in zip(ids, distances):
-                    module_name, _, index = doc_id.partition(":")
-                    module_name = parse_name(module_name)
+                    # NILAY - index is not the right column here, it was inserted with name
+                    # Also, module name doesn't even exist in the doc ID
+                    # module_name, _, index = doc_id.partition(":")
+                    # module_name = parse_name(module_name)
+                    name = doc_id.split(' ')
                     cursor.execute(
                         """
                         SELECT * FROM record
-                        WHERE module_name = %s AND index = %s
+                        WHERE name = %s
                         """,
-                        (Jsonb(module_name), index),
+                        (Jsonb(name),),
                     )
                     result = cursor.fetchone()
                     current_results.append(QueryResult(result=result, distance=distance))
