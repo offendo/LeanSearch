@@ -1,14 +1,15 @@
-import os
 import logging
+import os
 
 import chromadb
-from tqdm import tqdm
 from jixia.structs import pp_name
 from psycopg import Connection
+from tqdm import tqdm
 
 from .embedding import MistralEmbedding
 
 logger = logging.getLogger(__name__)
+
 
 def create_vector_db(conn: Connection, path: str, batch_size: int):
     with open("prompt/embedding_instruction.txt") as fp:
@@ -31,8 +32,8 @@ def create_vector_db(conn: Connection, path: str, batch_size: int):
                 INNER JOIN informal i ON s.name = i.symbol_name
             WHERE d.visible = TRUE
         """)
-        total = cursor.rowcount 
-        pbar = tqdm(total=total, desc='Creating embeddings')
+        total = cursor.rowcount
+        pbar = tqdm(total=total, desc="Creating embeddings")
 
         while batch := cursor.fetchmany(batch_size):
             batch_doc = []

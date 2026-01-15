@@ -2,7 +2,7 @@ import os
 from collections.abc import Iterable
 
 import chromadb
-from jixia.structs import LeanName, DeclarationKind, parse_name
+from jixia.structs import DeclarationKind, LeanName, parse_name
 from psycopg import Connection
 from psycopg.rows import class_row
 from psycopg.types.json import Jsonb
@@ -71,7 +71,7 @@ class Retriever:
                     # Also, module name doesn't even exist in the doc ID
                     # module_name, _, index = doc_id.partition(":")
                     # module_name = parse_name(module_name)
-                    name = doc_id.split(' ')
+                    name = doc_id.split(" ")
                     cursor.execute(
                         """
                         SELECT * FROM record
