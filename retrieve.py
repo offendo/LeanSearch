@@ -96,7 +96,8 @@ class Retriever:
                         (Jsonb(name),),
                     )
                     result = cursor.fetchone()
-                    current_results.append(QueryResult(result=result, distance=distance))
+                    if result is not None:
+                        current_results.append(QueryResult(result=result, distance=distance))
                 ret.append(current_results)
         return ret
 
