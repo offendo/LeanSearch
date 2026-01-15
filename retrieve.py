@@ -2,6 +2,7 @@ import os
 from collections.abc import Iterable
 
 import chromadb
+import re
 from jixia.structs import DeclarationKind, LeanName, parse_name
 from psycopg import Connection
 from psycopg.rows import class_row
@@ -104,14 +105,14 @@ class Retriever:
         results = self.mathatlas_collection.query(
             query_embeddings=query_embedding,
             n_results=num_results,
-            include=["distances", "documents", "metadata"],
+            include=["distances", "documents"],
         )
         ret = []
         for ids, distances, docs in zip(results["ids"], results["distances"], results["documents"]):
             current_results = []
             for doc_id, dist, doc in zip(ids, distances, docs):
                 # doc_id format = "nameelementid=`{name_element_id}`;elementid=`{element_id}`;nodeid=`{node_id}`;" 
-                name_element_id, element_id, node_id = re.findall(r"=`(.*)`", doc_id)
+                name_element_id, element_id, node_id = re.findall(r"=`(.*?)`", doc_id)
                 name, text = doc.split('\n', 1)
                 result = MathAtlasRecord(
                     name=name,

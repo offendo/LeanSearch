@@ -19,7 +19,7 @@ from slowapi.util import get_remote_address
 from starlette.requests import Request
 
 from augment import Augmentor
-from retrieve import QueryResult, Retriever, Record
+from retrieve import QueryResult, Retriever, Record, MathAtlasRecord, MathAtlasQueryResult
 
 
 @asynccontextmanager
@@ -65,7 +65,7 @@ def search(
         response: Response,
         query: list[str],
         num_results: Annotated[int, Body(gt=0, le=150)] = 10,
-) -> list[list[QueryResult]]:
+) -> list[list[MathAtlasQueryResult]]:
     return app.retriever.mathatlas_batch_search(query, num_results)
 
 
