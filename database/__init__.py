@@ -8,6 +8,7 @@ from jixia.structs import parse_name
 from .informalize import generate_informal
 from .jixia_db import load_data
 from .vector_db import create_vector_db
+from .mathatlas_vector_db import create_vector_db as mathatlas_create_vector_db
 from .create_schema import create_schema
 
 
@@ -40,6 +41,10 @@ def main():
     vector_db_parser.set_defaults(command="vector-db")
     vector_db_parser.add_argument("--batch-size", type=int, default=8)
 
+    mathatlas_db_parser = subparser.add_parser("mathatlas-vector-db")
+    mathatlas_db_parser.set_defaults(command="mathatlas-vector-db")
+    mathatlas_db_parser.add_argument("--batch-size", type=int, default=8)
+
     args = parser.parse_args()
 
     with psycopg.connect(os.environ["CONNECTION_STRING"], autocommit=True) as conn:
@@ -58,3 +63,5 @@ def main():
             )
         elif args.command == "vector-db":
             create_vector_db(conn, os.environ["CHROMA_PATH"], batch_size=args.batch_size)
+        elif args.command == "mathatlas-vector-db":
+            mathatlas_create_vector_db(os.environ["MATHATLAS_CHROMA_PATH"], batch_size=args.batch_size)

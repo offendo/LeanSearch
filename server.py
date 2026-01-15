@@ -36,7 +36,7 @@ async def lifespan(app: FastAPI):
         yield
 
 
-limiter = Limiter(key_func=get_remote_address, default_limits=["1/second"])
+limiter = Limiter(key_func=get_remote_address, default_limits=["9999999999/second"])
 app = FastAPI(lifespan=lifespan)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -58,33 +58,25 @@ def search(
         query: list[str],
         num_results: Annotated[int, Body(gt=0, le=150)] = 10,
 ) -> list[list[QueryResult]]:
-    if len(query) == 1:
-        with app.retriever.conn.cursor(row_factory=scalar_row) as cursor:
-            cursor.execute("""
-                           INSERT INTO leansearch.query(id, query, time)
-                           VALUES (GEN_RANDOM_UUID(), %s, NOW())
-                           RETURNING id
-                           """, (query[0],))
-            session_id = cursor.fetchone()
-            response.set_cookie("session", str(session_id))
-    else:
-        with app.retriever.conn.cursor() as cursor:
-            cursor.executemany("""
-                               INSERT INTO leansearch.query(id, query, time)
-                               VALUES (GEN_RANDOM_UUID(), %s, NOW())
-                               """, [(q,) for q in query])
-
     return app.retriever.batch_search(query, num_results)
+
+@app.post("/mathatlassearch")
+def search(
+        response: Response,
+        query: list[str],
+        num_results: Annotated[int, Body(gt=0, le=150)] = 10,
+) -> list[list[QueryResult]]:
+    return app.retriever.mathatlas_batch_search(query, num_results)
 
 
 @app.post("/fetch")
-@limiter.limit("10/second")
+# @limiter.limit("10/second")
 def fetch(request: Request, query: list[LeanName]) -> list[Record]:
     return app.retriever.batch_fetch(query)
 
 
 @app.post("/augment")
-@limiter.limit("15/minute")
+# @limiter.limit("15/minute")
 async def augment(request: Request, query: Annotated[str, Body()]) -> str:
     augmented = await app.augmentor.augment(query)
     return augmented

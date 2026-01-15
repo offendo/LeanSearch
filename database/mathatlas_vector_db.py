@@ -25,7 +25,7 @@ def create_vector_db(path: str, batch_size: int):
 
     neo4j_driver = GraphDatabase.driver(
         "neo4j://localhost:7687",
-        auth=("", ""),
+        auth=("neo4j", "password"),
     )
     neo4j_driver.verify_connectivity()
     neo4j_driver.verify_authentication()
@@ -40,13 +40,14 @@ def create_vector_db(path: str, batch_size: int):
         batch_id = []
         for record in batch:
             name_node, definition_node = record
+            name_element_id = name_node.element_id
             informal_name = name_node.get("text")
             informal_description = definition_node.get("text")
             element_id = definition_node.element_id
             node_id = definition_node.get("id")
 
             # Format the ID and document
-            batch_id.append(f"elementid=`{element_id}`;nodeid=`{node_id}`;")
+            batch_id.append(f"nameelementid=`{name_element_id}`;elementid=`{element_id}`;nodeid=`{node_id}`;")
             batch_doc.append(f"{informal_name}\n{informal_description}")
             if os.environ["DRY_RUN"] == "true":
                 logger.info("DRY_RUN:skipped embedding: %s", batch_id[-1])

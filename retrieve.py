@@ -26,11 +26,20 @@ class Record(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-
 class QueryResult(BaseModel):
     result: Record
     distance: float
 
+class MathAtlasRecord(BaseModel):
+    name: str
+    text: str
+    node_id: str
+    element_id: str
+    name_element_id: str
+
+class MathAtlasQueryResult(BaseModel):
+    result: MathAtlasRecord
+    distance: float
 
 class Retriever:
     def __init__(self, path: str, conn: Connection):
@@ -40,6 +49,12 @@ class Retriever:
         with open("prompt/retrieve_instruction.txt") as fp:
             instruction = fp.read()
         self.embedding = MistralEmbedding(os.environ["EMBEDDING_URL"], instruction)
+
+        # Enable mathatlas searching
+        with open("prompt/mathatlas_retrieve_instruction.txt") as fp:
+            instruction = fp.read()
+        self.mathatlas_embedding = MistralEmbedding(os.environ["EMBEDDING_URL"], instruction)
+        self.mathatlas_collection = self.client.get_collection(name="mathatlassearch", embedding_function=None)
 
     def batch_fetch(self, name: Iterable[LeanName]) -> list[Record]:
         ret = []
@@ -82,4 +97,30 @@ class Retriever:
                     result = cursor.fetchone()
                     current_results.append(QueryResult(result=result, distance=distance))
                 ret.append(current_results)
+        return ret
+
+    def mathatlas_batch_search(self, query: list[str], num_results: int) -> list[list[MathAtlasQueryResult]]:
+        query_embedding = self.mathatlas_embedding.embed(query)
+        results = self.mathatlas_collection.query(
+            query_embeddings=query_embedding,
+            n_results=num_results,
+            include=["distances", "documents", "metadata"],
+        )
+        ret = []
+        for ids, distances, docs in zip(results["ids"], results["distances"], results["documents"]):
+            current_results = []
+            for doc_id, dist, doc in zip(ids, distances, docs):
+                # doc_id format = "nameelementid=`{name_element_id}`;elementid=`{element_id}`;nodeid=`{node_id}`;" 
+                name_element_id, element_id, node_id = re.findall(r"=`(.*)`", doc_id)
+                name, text = doc.split('\n', 1)
+                result = MathAtlasRecord(
+                    name=name,
+                    text=text,
+                    name_element_id=name_element_id,
+                    element_id=element_id,
+                    node_id=node_id
+                )
+                current_results.append(MathAtlasQueryResult(result=result, distance=dist))
+
+            ret.append(current_results)
         return ret
