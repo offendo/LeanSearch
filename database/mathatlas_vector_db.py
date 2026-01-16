@@ -30,7 +30,7 @@ def create_vector_db(path: str, batch_size: int):
     neo4j_driver.verify_connectivity()
     neo4j_driver.verify_authentication()
 
-    query = """MATCH (n:Name)-[:NAMES]->(d:Definition) RETURN n,d"""
+    query = """MATCH (n:Name)-[:NAMES]->(d:Item) RETURN n,d"""
     records, _, _ = neo4j_driver.execute_query(query)
 
     pbar = tqdm(records, desc="Creating embeddings")
@@ -39,13 +39,13 @@ def create_vector_db(path: str, batch_size: int):
         batch_doc = []
         batch_id = []
         for record in batch:
-            name_node, definition_node = record
+            name_node, item_node = record
             name_element_id = name_node.element_id
             name_id = name_node.get("id")
             informal_name = name_node.get("text")
-            informal_description = definition_node.get("text")
-            element_id = definition_node.element_id
-            node_id = definition_node.get("id")
+            informal_description = item_node.get("text")
+            element_id = item_node.element_id
+            node_id = item_node.get("id")
 
             # Format the ID and document
             batch_id.append(f"nameelementid=`{name_element_id}`;nameid=`{name_id}`;elementid=`{element_id}`;nodeid=`{node_id}`;")

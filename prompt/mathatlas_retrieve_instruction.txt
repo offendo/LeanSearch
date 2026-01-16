@@ -1,1 +1,1 @@
-Given a math search term with context as a query, retrieve natural language definitions which mathematically match the query.
+Given a math search term (together with context) as a query, retrieve natural language definitions or theorems which the query refers to.

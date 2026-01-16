@@ -1,1 +1,1 @@
-Represent the given mathematical definition together with its identifer for retrieving related statements to a natural language query.
+Represent the given mathematical definition or theorem together with its identifer for retrieving related statements to a natural language query.
