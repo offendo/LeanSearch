@@ -112,15 +112,16 @@ class Retriever:
         for ids, distances, docs in zip(results["ids"], results["distances"], results["documents"]):
             current_results = []
             for doc_id, dist, doc in zip(ids, distances, docs):
-                # doc_id format = "nameelementid=`{name_element_id}`;elementid=`{element_id}`;nodeid=`{node_id}`;" 
-                name_element_id, element_id, node_id = re.findall(r"=`(.*?)`", doc_id)
+                # doc_id format = "nameelementid=`{name_element_id}`;nameid=`{name_id}`;elementid=`{element_id}`;nodeid=`{node_id}`;" 
+                name_element_id, name_id, element_id, node_id = re.findall(r"=`(.*?)`", doc_id)
                 name, text = doc.split('\n', 1)
                 result = MathAtlasRecord(
                     name=name,
                     text=text,
+                    name_id=name_id,
                     name_element_id=name_element_id,
                     element_id=element_id,
-                    node_id=node_id
+                    node_id=node_id,
                 )
                 current_results.append(MathAtlasQueryResult(result=result, distance=dist))
 
