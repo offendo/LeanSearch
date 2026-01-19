@@ -5,7 +5,7 @@ from typing import Annotated
 
 import dotenv
 import psycopg
-from fastapi import FastAPI, Body, Response, Cookie
+from fastapi import Body, Cookie, FastAPI, Response
 from jixia.structs import LeanName
 from psycopg import Connection
 from psycopg.rows import scalar_row
@@ -19,16 +19,16 @@ from slowapi.util import get_remote_address
 from starlette.requests import Request
 
 from augment import Augmentor
-from retrieve import QueryResult, Retriever, Record, MathAtlasRecord, MathAtlasQueryResult
+from retrieve import MathAtlasQueryResult, MathAtlasRecord, QueryResult, Record, Retriever
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     dotenv.load_dotenv()
     with ConnectionPool(
-            os.environ["CONNECTION_STRING"],
-            kwargs={"autocommit": True},
-            check=ConnectionPool.check_connection,
+        os.environ["CONNECTION_STRING"],
+        kwargs={"autocommit": True},
+        check=ConnectionPool.check_connection,
     ) as pool:
         app.augmentor = Augmentor(os.environ["OPENAI_MODEL"])
         app.retriever = Retriever(os.environ["CHROMA_PATH"], None)
@@ -54,19 +54,28 @@ app.add_middleware(SlowAPIMiddleware)
 
 @app.post("/search")
 def search(
-        response: Response,
-        query: list[str],
-        num_results: Annotated[int, Body(gt=0, le=150)] = 10,
+    response: Response,
+    query: list[str],
+    num_results: Annotated[int, Body(gt=0, le=150)] = 10,
 ) -> list[list[QueryResult]]:
     return app.retriever.batch_search(query, num_results)
 
+
 @app.post("/mathatlassearch")
-def search(
-        response: Response,
-        query: list[str],
-        num_results: Annotated[int, Body(gt=0, le=150)] = 10,
+def mathatlassearch(
+    response: Response,
+    query: list[str],
+    num_results: Annotated[int, Body(gt=0, le=150)] = 10,
 ) -> list[list[MathAtlasQueryResult]]:
     return app.retriever.mathatlas_batch_search(query, num_results)
+
+
+@app.post("/mathatlasadd")
+def mathatlasadd(
+    response: Response,
+    record: dict[str, str],
+) -> list[list[MathAtlasQueryResult]]:
+    return app.retriever.mathatlas_add_to_index(record)
 
 
 @app.post("/fetch")
@@ -93,13 +102,7 @@ async def feedback(session: Annotated[str, Cookie()], body: Feedback):
     query_id = uuid.UUID(session)
     if body.cancel:
         with app.retriever.conn.cursor() as cursor:
-            cursor.execute(
-                "DELETE FROM leansearch.feedback WHERE query_id = %s AND declaration_name = %s",
-                (query_id, Jsonb(body.declaration))
-            )
+            cursor.execute("DELETE FROM leansearch.feedback WHERE query_id = %s AND declaration_name = %s", (query_id, Jsonb(body.declaration)))
     else:
         with app.retriever.conn.cursor() as cursor:
-            cursor.execute(
-                "INSERT INTO leansearch.feedback(query_id, declaration_name, action) VALUES (%s, %s, %s)",
-                (query_id, Jsonb(body.declaration), body.action)
-            )
+            cursor.execute("INSERT INTO leansearch.feedback(query_id, declaration_name, action) VALUES (%s, %s, %s)", (query_id, Jsonb(body.declaration), body.action))
