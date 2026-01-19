@@ -70,12 +70,13 @@ def mathatlassearch(
     return app.retriever.mathatlas_batch_search(query, num_results)
 
 
-@app.post("/mathatlasadd")
+@app.post("/mathatlasadd", response_model=str)
 def mathatlasadd(
     response: Response,
     record: dict[str, str],
-) -> list[list[MathAtlasQueryResult]]:
-    return app.retriever.mathatlas_add_to_index(record)
+) -> str:
+    app.retriever.mathatlas_add_to_index(record)
+    return f"Successfully added {record['informal_name']}"
 
 
 @app.post("/fetch")

@@ -3,6 +3,7 @@ import re
 from collections.abc import Iterable
 
 import chromadb
+from datetime import datetime
 from jixia.structs import DeclarationKind, LeanName, parse_name
 from psycopg import Connection
 from psycopg.rows import class_row
@@ -117,18 +118,33 @@ class Retriever:
         for ids, distances, docs in zip(results["ids"], results["distances"], results["documents"]):
             current_results = []
             for doc_id, dist, doc in zip(ids, distances, docs):
-                # doc_id format = "nameelementid=`{name_element_id}`;nameid=`{name_id}`;elementid=`{element_id}`;nodeid=`{node_id}`;"
-                name_element_id, name_id, element_id, node_id = re.findall(r"=`(.*?)`", doc_id)
-                name, text = doc.split("\n", 1)
-                result = MathAtlasRecord(
-                    name=name,
-                    text=text,
-                    name_id=name_id,
-                    name_element_id=name_element_id,
-                    element_id=element_id,
-                    node_id=node_id,
-                )
-                current_results.append(MathAtlasQueryResult(result=result, distance=dist))
+                try:
+                    # doc_id format = "nameelementid=`{name_element_id}`;nameid=`{name_id}`;elementid=`{element_id}`;nodeid=`{node_id}`;"
+                    name_element_id, name_id, element_id, node_id = re.findall(r"=`(.*?)`", doc_id)
+
+                    # We default to 0 for the node_id and name_id
+                    try:
+                        node_id = int(node_id)
+                    except:
+                        node_id = 0
+                    try:
+                        name_id = int(name_id)
+                    except Exception:
+                        name_id = 0
+
+                    name, text = doc.split("\n", 1)
+                    result = MathAtlasRecord(
+                        name=name,
+                        text=text,
+                        name_id=name_id,
+                        name_element_id=name_element_id,
+                        element_id=element_id,
+                        node_id=node_id,
+                    )
+                    current_results.append(MathAtlasQueryResult(result=result, distance=dist))
+                except Exception as e:
+                    print(f"Failed to get {doc_id}: {e}")
+                    continue
 
             ret.append(current_results)
         return ret
@@ -146,7 +162,8 @@ class Retriever:
         # Format the ID and document
         batch_id = [f"nameelementid=`{name_element_id}`;nameid=`{name_id}`;elementid=`{element_id}`;nodeid=`{node_id}`;"]
         batch_doc = [f"{informal_name}\n{informal_description}"]
+        metadatas = [{"timestamp": datetime.now().isoformat(), "synthetic": True}]
         batch_embedding = self.mathatlas_embedding.embed(batch_doc)
 
         # upsert it into the collection - upsert is safe because the ID is unique, so at worst we're redoing a computation.
-        self.mathatlas_collection.upsert(embeddings=batch_embedding, ids=batch_id, documents=batch_doc)
+        self.mathatlas_collection.upsert(embeddings=batch_embedding, ids=batch_id, documents=batch_doc, metadatas=metadatas)
