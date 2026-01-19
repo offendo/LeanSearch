@@ -34,8 +34,9 @@ class QueryResult(BaseModel):
 class MathAtlasRecord(BaseModel):
     name: str
     text: str
-    node_id: str
+    node_id: int
     element_id: str
+    name_id: int
     name_element_id: str
 
 class MathAtlasQueryResult(BaseModel):
@@ -112,18 +113,22 @@ class Retriever:
         for ids, distances, docs in zip(results["ids"], results["distances"], results["documents"]):
             current_results = []
             for doc_id, dist, doc in zip(ids, distances, docs):
-                # doc_id format = "nameelementid=`{name_element_id}`;nameid=`{name_id}`;elementid=`{element_id}`;nodeid=`{node_id}`;" 
-                name_element_id, name_id, element_id, node_id = re.findall(r"=`(.*?)`", doc_id)
-                name, text = doc.split('\n', 1)
-                result = MathAtlasRecord(
-                    name=name,
-                    text=text,
-                    name_id=name_id,
-                    name_element_id=name_element_id,
-                    element_id=element_id,
-                    node_id=node_id,
-                )
-                current_results.append(MathAtlasQueryResult(result=result, distance=dist))
+                try:
+                    # doc_id format = "nameelementid=`{name_element_id}`;nameid=`{name_id}`;elementid=`{element_id}`;nodeid=`{node_id}`;" 
+                    name_element_id, name_id, element_id, node_id = re.findall(r"=`(.*?)`", doc_id)
+                    name, text = doc.split('\n', 1)
+                    result = MathAtlasRecord(
+                        name=name,
+                        text=text,
+                        name_id=name_id,
+                        name_element_id=name_element_id,
+                        element_id=element_id,
+                        node_id=node_id,
+                    )
+                    current_results.append(MathAtlasQueryResult(result=result, distance=dist))
+                except Exception as e:
+                    print(f'Retrieval of {element_id=}/{name_element_id=} failed: ', e)
+                    continue
 
             ret.append(current_results)
         return ret
